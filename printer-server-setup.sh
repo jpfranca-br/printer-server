@@ -88,7 +88,7 @@ echo "Cleaning up..."
 rm /tmp/$GO_TAR
 
 #Go To Source Folder
-~/go/src/printer-server
+cd ~/go/src/printer-server
 
 echo "Go and dependencies installed successfully!"
 echo "Remember to open a new terminal or run 'source $SHELL_CONFIG' to apply PATH changes."
