@@ -53,11 +53,11 @@ mkdir -p $WORKSPACE_DIR/{bin,src,pkg}
 
 # Download source
 echo "Initializing Go module source..."
-rm -rf ~/printer-server && cd ~/ && git clone https://github.com/jpfranca-br/printer-server.git
+rm -rf ~/go/src/printer-server && cd ~/go/src/ && git clone https://github.com/jpfranca-br/printer-server.git
 
 # Initialize Go Module
 echo "Initializing Go module..."
-cd ~/printer-server
+cd ~/go/src/printer-server
 go mod init printer-server
 
 # Install Go Dependencies
@@ -86,6 +86,9 @@ fi
 # Cleanup
 echo "Cleaning up..."
 rm /tmp/$GO_TAR
+
+#Go To Source Folder
+~/go/src/printer-server
 
 echo "Go and dependencies installed successfully!"
 echo "Remember to open a new terminal or run 'source $SHELL_CONFIG' to apply PATH changes."

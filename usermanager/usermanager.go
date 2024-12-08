@@ -2,43 +2,44 @@ package main
 
 import (
 	"encoding/json"
+	"embed"
 	"fmt"
 	"golang.org/x/crypto/bcrypt"
-	"io/ioutil"
 	"os"
-	"path/filepath"
 )
 
+// User structure
 type User struct {
 	Username string `json:"username"`
 	Password string `json:"password"` // This will store the hashed password
 }
 
 var users []User
-var filePath = getFilePath() // Dynamically determine the absolute path to users.json
 
-// Dynamically determine the absolute path to the configuration file
-func getFilePath() string {
-	exePath, err := os.Executable() // Get the path of the running executable
-	if err != nil {
-		panic("Failed to determine executable path: " + err.Error())
-	}
-	configPath := filepath.Join(filepath.Dir(exePath), "../config/users.json")
-	return configPath
-}
+// Embed the users.json file
+//go:embed printer-server/config/users.json
+var embeddedUsersFile embed.FS
 
 func loadUsers() {
-	data, err := ioutil.ReadFile(filePath)
+	// Attempt to read the embedded file
+	data, err := embeddedUsersFile.ReadFile("printer-server/config/users.json")
 	if err != nil {
+		fmt.Println("Error reading embedded users.json:", err)
 		users = []User{}
 		return
 	}
-	json.Unmarshal(data, &users)
+
+	err = json.Unmarshal(data, &users)
+	if err != nil {
+		fmt.Println("Error unmarshalling users.json:", err)
+		users = []User{}
+	}
 }
 
 func saveUsers() {
-	data, _ := json.MarshalIndent(users, "", "  ")
-	ioutil.WriteFile(filePath, data, 0644)
+	// Saving users.json back to the filesystem isn't compatible with embed, 
+	// since embedded files are read-only. Inform the user about this limitation.
+	fmt.Println("Save operation is not supported for embedded files. Changes will not persist.")
 }
 
 func hashPassword(password string) (string, error) {

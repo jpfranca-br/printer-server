@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"handlers"
+	"printer-server/handlers"
 )
 
 func main() {
