@@ -1,4 +1,5 @@
 #!/bin/bash
+echo "Starting Printer Server Setup"
 
 # Variables
 GO_VERSION="1.23.4" # Update this to the latest version if needed
