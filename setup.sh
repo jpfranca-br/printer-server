@@ -439,8 +439,7 @@ echo "y" | sudo ufw enable
 ### FINISH
 ##########################################################################################
 echo "Setup complete"
-echo "Domains: ${domains[*]}"
-echo "Printer Domain: $printer_domain"
-echo "Printer Local IP: $printer_local_ip"
 echo "Remember to open a new terminal or run 'source $SHELL_CONFIG' to apply PATH changes."
 echo "It is a good idea to run: sudo apt-get upgrade -y"
+echo "This is the frpc.toml file to put on your client:"
+cat $HOME/frp/frpc.toml
