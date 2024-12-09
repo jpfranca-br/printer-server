@@ -53,16 +53,13 @@ ask_yes_no() {
 ### USER INPUT
 ##########################################################################################
 
-# Ask if the user wants to install the Printer Server
+# Ask if the user wants to install the Printer Server and Reverse Proxy (which is mandatory for printer server)
 if ask_yes_no "Do you want to install Printer Server"; then
     install_printer_server=true
     install_frp=true
 else
     install_printer_server=false
-fi
-
-if ! $install_printer_server; then
-    # Ask if the user wants to install FRP
+        # Ask if the user wants to install FRP
     if ask_yes_no "Do you want to install Fast Reverse Proxy"; then
         install_frp=true
     else
@@ -82,54 +79,9 @@ while true; do
     fi
 done
 
-# Prompt user for the number of domains
-while true; do
-    read -p "Enter the number of domains (must be 1 or more): " n
-    # Check if input is an integer and greater than 0
-    if [[ $n =~ ^[0-9]+$ ]] && (( n > 0 )); then
-        break
-    else
-        echo "Invalid input. Please enter a integer greater than 0."
-    fi
-done
-
-echo "You entered: $n domains"
-
-domains=()
-for ((i=1; i<=n; i++)); do
-    while true; do
-        read -p "Enter domain $i: " domain
-        # Check if input matches a basic domain pattern
-        if [[ $domain =~ ^(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})$ ]]; then
-            domains+=("$domain")
-            break
-        else
-            echo "Invalid domain. Please try again (e.g., example.com or sub.example.com)."
-        fi
-    done
-done
-
-# Print entered domains for verification
-echo "Entered domains: ${domains[@]}"
-
-# Prompt user for the domain that will be used for the printer
-# This will be the printer server for the client
 if $install_printer_server; then
-    if (( n != 1 )); then
-        while true; do
-            read -p "Enter the domain that will be used to access the printer: " printer_domain
-            # Check if input matches a basic domain pattern
-            if [[ $printer_domain =~ ^(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})$ ]]; then
-                echo "Valid domain: $printer_domain"
-                break
-            else
-                echo "Invalid domain. Please try again (e.g., example.com or sub.example.com)."
-            fi
-        done
-    else
-        printer_domain=${domains[0]}  # Use the first domain from the array
-    fi
-
+    # Install only 1 domain
+    n=1
     # Prompt user for the printer local port
     while true; do
         read -p "Enter the printer local IP (x.x.x.x) or servername: " printer_local_ip
@@ -154,18 +106,38 @@ if $install_printer_server; then
             echo "Invalid input. Please enter a valid IP address (e.g., 192.168.1.1) or server name (e.g., printer.local)."
         fi
     done
+else
+    # Prompt user for the number of domains
+    while true; do
+        read -p "Enter the number of domains (must be 1 or more): " n
+        # Check if input is an integer and greater than 0
+        if [[ $n =~ ^[0-9]+$ ]] && (( n > 0 )); then
+            break
+        else
+            echo "Invalid input. Please enter a integer greater than 0."
+        fi
+    done
+    echo "You entered: $n domains"
 fi
 
-if $install_frp; then
-    # Generate a GUID token using uuidgen
-    if command -v uuidgen >/dev/null 2>&1; then
-        frp_token=$(uuidgen)
-    else
-        # Fallback: Generate a random string using openssl if uuidgen is not available
-        frp_token=$(openssl rand -hex 16)
-    fi
-    echo "Generated FRP token: $frp_token"
-fi
+domains=()
+for ((i=1; i<=n; i++)); do
+    while true; do
+        read -p "Enter domain $i: " domain
+        # Check if input matches a basic domain pattern
+        if [[ $domain =~ ^(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})$ ]]; then
+            domains+=("$domain")
+            break
+        else
+            echo "Invalid domain. Please try again (e.g., example.com or sub.example.com)."
+        fi
+    done
+done
+
+printer_domain=${domains[0]}
+
+# Print entered domains for verification
+echo "Entered domains: ${domains[@]}"
 
 if ! ask_yes_no "Start the installation?"; then
     echo "Exiting without further actions..."
@@ -270,18 +242,26 @@ if $install_frp; then
     # Extract FRP
     echo "Extracting FRP to $FRP_DIR..."
     sudo tar --strip-components=1 -C "$FRP_DIR" -xzf "/tmp/$FRP_TAR"
-    
+
+    # Generate a GUID token using uuidgen
+    if command -v uuidgen >/dev/null 2>&1; then
+        frp_token=$(uuidgen)
+    else
+        # Fallback: Generate a random string using openssl if uuidgen is not available
+        frp_token=$(openssl rand -hex 16)
+    fi
+    echo "Generated FRP token: $frp_token"
     # Create/rewrite ~/frp/frps.toml
     sudo touch $FRP_DIR/frps.toml
     sudo chmod 644 $FRP_DIR/frps.toml
     sudo bash -c "cat > $FRP_DIR/frps.toml" <<EOL
 # frps.toml
 bindPort = 7000
-vhostHTTPPort = 8080
+$(if ! $install_printer_server; then echo "vhostHTTPPort = 8080"; fi)
 auth.method = "token"
 auth.token = "$frp_token"
 EOL
-    
+    # note that vhostHTTPPort = 8080 only exists if printer_server is not installed
     # Create/rewrite ~/frp/frpc.toml
     sudo touch $FRP_DIR/frpc.toml
     sudo chmod 644 $FRP_DIR/frpc.toml
