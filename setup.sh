@@ -17,9 +17,6 @@ FRP_VERSION="0.61.0"
 FRP_TAR="frp_${FRP_VERSION}_linux_amd64.tar.gz"
 FRP_DOWNLOAD_URL="https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/${FRP_TAR}"
 
-# PRINTER SERVER Download Location
-################## PRINTER_SERVER_DOWNLOAD_URL="https://github.com/jpfranca-br/printer-server.git"
-
 # Variables - local files
 GO_INSTALL_DIR="/usr/local/go"
 SRC_DIR="$HOME/printer-server"
@@ -202,7 +199,6 @@ done
 
 # Obtain SSL certificates
 sudo certbot --nginx $certbot_domains --non-interactive --agree-tos --email $user_email
-check_status "Failed to get SSL certificates"
 
 # Test and dry-run renew
 sudo certbot renew --dry-run
