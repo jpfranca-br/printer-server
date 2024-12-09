@@ -291,12 +291,12 @@ check_status "Failed to create/rewrite /etc/systemd/system/printer-server.servic
 echo "Reloading daemon..."
 sudo systemctl daemon-reload
 
-# Start and enable frps-server
-echo "Starting frps-server..."
-sudo systemctl start frps-server
-check_status "Failed to start frps-server. Please check manually."
-sudo systemctl enable frps-server
-check_status "Failed to enable frps-server at startup."
+# Start and enable frps
+echo "Starting frps..."
+sudo systemctl start frps
+check_status "Failed to start frps. Please check manually."
+sudo systemctl enable frps
+check_status "Failed to enable frps at startup."
 
 # Start and enable Redis
 echo "Starting Redis..."
