@@ -39,7 +39,7 @@ Ensure your system has the following:
    cd ~
    git clone https://github.com/jpfranca-br/printer-server.git
    cd printer-server
-   chmod +x setup.sh
+   chmod +x *.sh
    ./setup.sh
    ```
    - The script installs all dependencies, configures NGINX, sets up Redis, and builds the Go binaries.
