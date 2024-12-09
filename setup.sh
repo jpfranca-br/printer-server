@@ -129,8 +129,21 @@ if $install_printer_server; then
     while true; do
         read -p "Enter the printer local IP (x.x.x.x) or servername: " printer_local_ip
         # Check if input matches a valid IP address or server name
-        if [[ $printer_local_ip =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ || $printer_local_ip =~ ^(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})$ ]]; then
-            echo "Valid input: $printer_local_ip"
+        if [[ $printer_local_ip =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+            # Extract the octets of the IP and validate their range
+            IFS='.' read -r -a octets <<< "$printer_local_ip"
+            if ((octets[0] >= 0 && octets[0] <= 255)) && \
+               ((octets[1] >= 0 && octets[1] <= 255)) && \
+               ((octets[2] >= 0 && octets[2] <= 255)) && \
+               ((octets[3] >= 0 && octets[3] <= 255)); then
+                echo "Valid IP address: $printer_local_ip"
+                break
+            else
+                echo "Invalid IP address. Each octet must be between 0 and 255."
+            fi
+        elif [[ $printer_local_ip =~ ^(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})$ ]]; then
+            # If input matches a valid server name
+            echo "Valid server name: $printer_local_ip"
             break
         else
             echo "Invalid input. Please enter a valid IP address (e.g., 192.168.1.1) or server name (e.g., printer.local)."
