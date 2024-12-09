@@ -11,17 +11,21 @@ check_status() {
     fi
 }
 
+# Get latest changes
+cd "$SRC_DIR"
+git pull
+git status
+
 # Install Go Dependencies
 echo "Installing Go dependencies..."
 go mod tidy
 check_status "Failed to install Go dependencies."
 
-# Build printer-server
-cd "$SRC_DIR"
+# Rebuild printer-server
 go build -o printer-server main.go
 check_status "Failed to build printer-server. Please check manually: go build -o printer-server main.go"
 
-# Build user-manager
+# Rebuild user-manager
 cd "$SRC_DIR"
 go build -o user-manager user-manager.go
 check_status "Failed to build user-manager. Please check manually: go build -o user-manager user-manager.go"
