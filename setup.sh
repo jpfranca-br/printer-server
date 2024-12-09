@@ -317,7 +317,10 @@ check_status "Failed to enable printer-server at startup."
 ##########################################################################################
 
 # Configure UFW
-sudo ufw allow 22,80,443,7000
+sudo ufw allow 22/tcp
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw allow 7000/tcp
 echo "y" | sudo ufw enable
 
 ##########################################################################################
