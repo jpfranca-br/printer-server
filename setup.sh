@@ -56,18 +56,21 @@ ask_yes_no() {
 ### USER INPUT
 ##########################################################################################
 
-# Ask if the user wants to install FRP
-if ask_yes_no "Do you want to install Fast Reverse Proxy"; then
-    install_frp=true
-else
-    install_frp=false
-fi
-
 # Ask if the user wants to install the Printer Server
 if ask_yes_no "Do you want to install Printer Server"; then
     install_printer_server=true
+    install_frp=true
 else
     install_printer_server=false
+fi
+
+if ! install_printer_server; then
+    # Ask if the user wants to install FRP
+    if ask_yes_no "Do you want to install Fast Reverse Proxy"; then
+        install_frp=true
+    else
+        install_frp=false
+    fi
 fi
 
 # Prompt user for email
@@ -250,7 +253,7 @@ sudo systemctl reload nginx
 ### FRP
 ##########################################################################################
 # FRP will be installed separately of as part of printer server environment
-if $install_frp || $install_printer_server; then
+if $install_frp; then
     # Download FRP
     echo "Downloading FRP $FRP_VERSION..."
     wget -q "$FRP_DOWNLOAD_URL" -O "/tmp/$FRP_TAR"
@@ -413,7 +416,7 @@ fi
 echo "Reloading daemon..."
 sudo systemctl daemon-reload
 
-if $install_frp || $install_printer_server; then
+if $install_frp; then
     # Start and enable frps
     echo "Starting frps..."
     sudo systemctl start frps
