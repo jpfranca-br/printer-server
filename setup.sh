@@ -115,16 +115,21 @@ echo "Entered domains: ${domains[@]}"
 # Prompt user for the domain that will be used for the printer
 # This will be the printer server for the client
 if $install_printer_server; then
-    while true; do
-        read -p "Enter the domain that will be used to access the printer: " printer_domain
-        # Check if input matches a basic domain pattern
-        if [[ $printer_domain =~ ^(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})$ ]]; then
-            echo "Valid domain: $printer_domain"
-            break
-        else
-            echo "Invalid domain. Please try again (e.g., example.com or sub.example.com)."
-        fi
-    done
+    if (( n != 1 )); then
+        while true; do
+            read -p "Enter the domain that will be used to access the printer: " printer_domain
+            # Check if input matches a basic domain pattern
+            if [[ $printer_domain =~ ^(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})$ ]]; then
+                echo "Valid domain: $printer_domain"
+                break
+            else
+                echo "Invalid domain. Please try again (e.g., example.com or sub.example.com)."
+            fi
+        done
+    else
+        printer_domain=${domains[0]}  # Use the first domain from the array
+    fi
+
     # Prompt user for the printer local port
     while true; do
         read -p "Enter the printer local IP (x.x.x.x) or servername: " printer_local_ip
