@@ -27,6 +27,10 @@ FRP_DIR="$HOME/frp"
 SHELL_CONFIG="${HOME}/.$(basename $SHELL)rc"
 NGINX_CONFIG="/etc/nginx/sites-available/default"
 
+##########################################################################################
+### FUNCTIONS
+##########################################################################################
+
 # Function to check the last command's status
 check_status() {
     if [ $? -ne 0 ]; then
@@ -35,9 +39,36 @@ check_status() {
     fi
 }
 
+# Function to validate Yes/No input
+ask_yes_no() {
+    local prompt="$1"
+    while true; do
+        read -p "$prompt (Y/N): " choice
+        case "$choice" in
+            [Yy]* ) return 0 ;;  # Yes
+            [Nn]* ) return 1 ;;  # No
+            * ) echo "Please answer Y or N." ;;
+        esac
+    done
+}
+
 ##########################################################################################
 ### USER INPUT
 ##########################################################################################
+
+# Ask if the user wants to install FRP
+if ask_yes_no "Do you want to install Fast Reverse Proxy"; then
+    install_frp=true
+else
+    install_frp=false
+fi
+
+# Ask if the user wants to install the Printer Server
+if ask_yes_no "Do you want to install Printer Server"; then
+    install_printer_server=true
+else
+    install_printer_server=false
+fi
 
 # Prompt user for email
 while true; do
@@ -81,37 +112,45 @@ echo "Entered domains: ${domains[@]}"
 
 # Prompt user for the domain that will be used for the printer
 # This will be the printer server for the client
-while true; do
-    read -p "Enter the domain that will be used to access the printer: " printer_domain
-    # Check if input matches a basic domain pattern
-    if [[ $printer_domain =~ ^(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})$ ]]; then
-        echo "Valid domain: $printer_domain"
-        break
-    else
-        echo "Invalid domain. Please try again (e.g., example.com or sub.example.com)."
-    fi
-done
-
-# Prompt user for the printer local port
-while true; do
-    read -p "Enter the printer local IP (x.x.x.x) or servername: " printer_local_ip
-    # Check if input matches a valid IP address or server name
-    if [[ $printer_local_ip =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ || $printer_local_ip =~ ^(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})$ ]]; then
-        echo "Valid input: $printer_local_ip"
-        break
-    else
-        echo "Invalid input. Please enter a valid IP address (e.g., 192.168.1.1) or server name (e.g., printer.local)."
-    fi
-done
-
-# Generate a GUID token using uuidgen
-if command -v uuidgen >/dev/null 2>&1; then
-    frp_token=$(uuidgen)
-else
-    # Fallback: Generate a random string using openssl if uuidgen is not available
-    frp_token=$(openssl rand -hex 16)
+if $install_printer_server; then
+    while true; do
+        read -p "Enter the domain that will be used to access the printer: " printer_domain
+        # Check if input matches a basic domain pattern
+        if [[ $printer_domain =~ ^(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})$ ]]; then
+            echo "Valid domain: $printer_domain"
+            break
+        else
+            echo "Invalid domain. Please try again (e.g., example.com or sub.example.com)."
+        fi
+    done
+    # Prompt user for the printer local port
+    while true; do
+        read -p "Enter the printer local IP (x.x.x.x) or servername: " printer_local_ip
+        # Check if input matches a valid IP address or server name
+        if [[ $printer_local_ip =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ || $printer_local_ip =~ ^(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})$ ]]; then
+            echo "Valid input: $printer_local_ip"
+            break
+        else
+            echo "Invalid input. Please enter a valid IP address (e.g., 192.168.1.1) or server name (e.g., printer.local)."
+        fi
+    done
 fi
-echo "Generated FRP token: $frp_token"
+
+if $install_frp; then
+    # Generate a GUID token using uuidgen
+    if command -v uuidgen >/dev/null 2>&1; then
+        frp_token=$(uuidgen)
+    else
+        # Fallback: Generate a random string using openssl if uuidgen is not available
+        frp_token=$(openssl rand -hex 16)
+    fi
+    echo "Generated FRP token: $frp_token"
+fi
+
+if !ask_yes_no "Start the installation?"; then
+    echo "Exiting without further actions..."
+    exit 1
+fi
 
 ##########################################################################################
 ### INSTALL DEPENDENCIES
