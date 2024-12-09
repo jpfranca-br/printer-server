@@ -82,16 +82,18 @@ while true; do
     fi
 done
 
-# Prompt user for domains
+# Prompt user for the number of domains
 while true; do
-    read -p "Enter the number of domains: " n
-    # Check if input is an integer using a regular expression
-    if [[ $n =~ ^[0-9]+$ ]]; then
+    read -p "Enter the number of domains (must be 1 or more): " n
+    # Check if input is an integer and greater than 0
+    if [[ $n =~ ^[0-9]+$ ]] && (( n > 0 )); then
         break
     else
-        echo "Invalid input. Please enter a positive integer."
+        echo "Invalid input. Please enter a integer greater than 0."
     fi
 done
+
+echo "You entered: $n domains"
 
 domains=()
 for ((i=1; i<=n; i++)); do
