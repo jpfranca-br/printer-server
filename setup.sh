@@ -149,7 +149,7 @@ if $install_frp; then
     echo "Generated FRP token: $frp_token"
 fi
 
-if !ask_yes_no "Start the installation?"; then
+if ! ask_yes_no "Start the installation?"; then
     echo "Exiting without further actions..."
     exit 1
 fi
