@@ -1,4 +1,4 @@
-# Printer Server Project
+# Printer Server
 
 ## Overview
 The Printer Server is a powerful tool for managing print requests efficiently and securely over TCP. Designed with modularity and scalability in mind, this project combines modern technologies like **Go**, **NGINX**, **Redis**, and **FRP** to deliver a reliable and easy-to-use printing solution.
