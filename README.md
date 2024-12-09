@@ -1,121 +1,148 @@
-### **Printer Server Project README**
+# Printer Server Project
+
+## Overview
+The Printer Server is a powerful tool for managing print requests efficiently and securely over TCP. Designed with modularity and scalability in mind, this project combines modern technologies like **Go**, **NGINX**, **Redis**, and **FRP** to deliver a reliable and easy-to-use printing solution.
+
+### Key Features
+- **Authentication**: Token-based authentication for secure access.
+- **Print Management**: Handle print requests seamlessly via a RESTful API.
+- **Scalable Setup**: Supports multiple domains and robust proxy configurations.
+- **Modular Design**: Independent components for user management, authentication, and printing.
+- **SSL Secured**: Secure your connections using NGINX with SSL certificates.
 
 ---
 
-#### **Overview**
+## Architecture
+The system is built using the following key components:
 
-This project sets up a **Printer Server** with:
-- **NGINX** for reverse proxy and SSL certificates.
-- **Fast Reverse Proxy Server (FRPS)** for TCP/HTTP forwarding.
-- A Go-based backend to send and manage print requests over TCP.
+1. **NGINX**: Acts as a reverse proxy, managing incoming requests and securing them with SSL.
+2. **FRP (Fast Reverse Proxy)**: Facilitates TCP/HTTP forwarding for remote access.
+3. **Go Backend**:
+   - Handles authentication, user management, and print requests.
+   - Interfaces with Redis for state management.
+4. **Redis**: Used as a lightweight database to store session data and manage state.
 
 ---
 
-### **Setup Instructions**
+## Setup Instructions
 
-1. Clone repo and run setup
+### Prerequisites
+Ensure your system has the following:
+- **Ubuntu** or a compatible Linux distribution.
+- **Git** installed.
+
+### Installation
+
+1. Clone the repository and execute the setup script:
    ```bash
    sudo apt install git -y
    cd ~
-   rm -rf printer-server
    git clone https://github.com/jpfranca-br/printer-server.git
    cd printer-server
    chmod +x setup.sh
    ./setup.sh
    ```
-This script will:
-- Install Nginx and create certificates for the domains
-- Ff you want to install Printer Server, script will also install FRP, Go, Redis and build Printer Server
-   - Othersiwe, you have to option to install FRP
-- Create, enable and run services
+   - The script installs all dependencies, configures NGINX, sets up Redis, and builds the Go binaries.
 
-### **Server Information**
+2. Follow the interactive prompts:
+   - **Install only NGINX and certificates**: Answer `NO` to install Printer Server and `NO` to install FRP. This setup allows for configuring multiple domains to redirect all traffic to port 8080 (users can later modify the NGINX configuration).
+   - **Install NGINX, certificates, and FRP**: Answer `NO` to install Printer Server and `YES` to install FRP. This configuration supports multiple domains, redirecting traffic to port 8080, and is particularly useful for accessing Internal Web Services with Custom Domains in LAN. See the [FRP Documentation](https://github.com/fatedier/frp?tab=readme-ov-file#accessing-internal-web-services-with-custom-domains-in-lan) for more details.
+   - **Install NGINX, certificates, FRP, Redis, and Printer Server**: Answer `YES` to install Printer Server. This configuration exposes a local printer (where the FRP Client is installed) securely to the internet.
 
-1. **Server Code**:
-   - Located at: `~/printer-server`.
-
-2. **User Management Module**:
-   - Located at: `~/printer-server/user-manager`.
-
-4. **How to Build and Run the User Management Module**:
-   - Run user manager:
+3. **FRP Client Configuration**:
+   - At the end of the setup, the script displays the content of the `frpc.toml` configuration file.
+   - This file should be copied to the client machine that is on the same LAN as the printer (or modified to support multiple clients in the case of custom domains).
+   - On the client machine, run the FRP client using:
      ```bash
-     cd ~/printer-server
-     ./usermanager <command>
+     ./frpc -c ./frpc.toml
      ```
 
-     Example commands:
-     - Add a user:
-       ```bash
-       ./usermanager add <username> <password>
-       ```
-     - List users:
-       ```bash
-       ./usermanager list
-       ```
-     - Delete a user:
-       ```bash
-       ./usermanager delete <username>
-       ```
+4. Services will be enabled and started automatically:
+   - **NGINX** for reverse proxy.
+   - **Redis** for state management.
+   - **Printer Server** for handling API requests.
 
 ---
 
-### **Using the Printer Server API**
+## Usage Instructions
 
-#### **1. Authenticate (`/auth`)**
-
-Use this endpoint to authenticate and retrieve a token.
-
+### Authentication Endpoint
+Authenticate users to obtain a session token:
 ```bash
 curl -X POST https://<your-server>/auth \
 -H "Content-Type: application/json" \
 -d '{"username": "<your-username>", "password": "<your-password>"}'
 ```
-
-**Example Response**:
+**Response**:
 ```json
 {
-    "token": "example-token-12345abcdef67890",
-    "expires_at": "2024-12-08T22:45:00Z"
+  "token": "example-token-12345abcdef67890",
+  "expires_at": "2024-12-08T22:45:00Z"
 }
 ```
 
----
-
-#### **2. Print a Message (`/print`)**
-
-Use this endpoint to send a print request to the printer. Replace `<token>` with the token received from `/auth`.
-
+### Print Request Endpoint
+Send a message to the printer using a valid token:
 ```bash
 curl -X POST https://<your-server>/print \
 -H "Content-Type: application/json" \
 -d '{
-    "username": "<your-username>",
-    "token": "example-token-12345abcdef67890",
-    "message": "Hello, Printer!"
+  "username": "<your-username>",
+  "token": "<your-token>",
+  "message": "Hello, Printer!"
 }'
 ```
-
-**Example Response**:
+**Response**:
 ```json
 {
-    "message": "Message sent successfully"
+  "message": "Message sent successfully"
 }
 ```
 
 ---
 
-### **Notes**
+## User Management
+Manage users via the CLI utility:
+
+1. Add a user:
+   ```bash
+   ./usermanager add <username> <password>
+   ```
+
+2. List all users:
+   ```bash
+   ./usermanager list
+   ```
+
+3. Delete a user:
+   ```bash
+   ./usermanager delete <username>
+   ```
+
+---
+
+## Notes
 
 1. **Token Expiration**:
-   - Tokens are valid for 60 minutes. After that, you need to reauthenticate.
+   - Tokens expire after 60 minutes. Re-authentication is required thereafter.
 
 2. **Error Handling**:
-   - If authentication or print requests fail, the API will return an appropriate error message.
+   - API responses provide detailed error messages for easier debugging.
 
-3. **Logs and Debugging**:
-   - Check server logs to debug any issues with the API or printer communication.
+3. **Logs**:
+   - Check server logs for any issues related to API or printer communication.
 
 4. **Security**:
-   - Use strong passwords for authentication.
-   - Protect the FRPS server with a robust token and firewall rules.
+   - Use strong passwords for user accounts.
+   - Protect the FRP server with robust tokens and firewall rules.
+
+---
+
+## Contributions
+Contributions are welcome! Fork the repository and submit a pull request for review.
+
+---
+
+## License
+This project is licensed under the MIT License. See `LICENSE` for details.
+
