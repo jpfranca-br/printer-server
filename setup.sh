@@ -266,8 +266,9 @@ if $install_frp || $install_printer_server; then
     sudo tar --strip-components=1 -C "$FRP_DIR" -xzf "/tmp/$FRP_TAR"
     
     # Create/rewrite ~/frp/frps.toml
-    sudo chmod 655 $FRP_DIR/frps.toml
-    cat > $FRP_DIR/frps.toml <<EOL
+    sudo touch $FRP_DIR/frps.toml
+    sudo chmod 644 $FRP_DIR/frps.toml
+    sudo bash -c "cat > $FRP_DIR/frps.toml" <<EOL
 # frps.toml
 bindPort = 7000
 vhostHTTPPort = 8080
@@ -276,8 +277,9 @@ auth.token = "$frp_token"
 EOL
     
     # Create/rewrite ~/frp/frpc.toml
-    sudo chmod 655 $FRP_DIR/frpc.toml
-    cat > $FRP_DIR/frpc.toml <<EOL
+    sudo touch $FRP_DIR/frpc.toml
+    sudo chmod 644 $FRP_DIR/frpc.toml
+    sudo bash -c "cat > $FRP_DIR/frpc.toml" <<EOL
 # frpc.toml
 user = "$username"
 loginFailExit = false
