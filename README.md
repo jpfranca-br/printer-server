@@ -13,82 +13,34 @@ This project sets up a **Printer Server** with:
 
 ### **Setup Instructions**
 
-#### **1. Install and Configure FRPS (Fast Reverse Proxy Server)**
-
-1. Clone and run the FRPS setup project:
+1. Clone repo and run setup
    ```bash
-   git clone https://github.com/jpfranca-br/frps-setup.git
-   cd frps-setup
+   sudo apt install git -y
+   cd ~
+   rm -rf printer-server
+   git clone https://github.com/jpfranca-br/printer-server.git
+   cd printer-server
+   chmod +x setup.sh
    ./setup.sh
    ```
-
-2. **Configure Subdomain**:
-   - During setup, create only **one subdomain**.
-
-3. **Edit FRPS Configuration**:
-   - Open the `frps.toml` configuration file:
-     ```bash
-     nano ~/frp/frps.toml
-     ```
-   - Comment out the following line:
-     ```
-     # vhostHTTPPort = 8080
-     ```
-
-4. Restart the FRPS service:
-   ```bash
-   sudo systemctl restart frps
-   sudo systemctl status frps
-   ```
-
----
-
-#### **2. Install and Setup the Printer Server**
-
-1. Run the following commands to download and execute the Printer Server setup script:
-   ```bash
-   cd ~
-   curl -o printer-server-setup.sh https://raw.githubusercontent.com/jpfranca-br/printer-server/main/printer-server-setup.sh
-   chmod +x printer-server-setup.sh
-   ./printer-server-setup.sh
-   rm ~/printer-server-setup.sh
-   ```
-
 This script will:
-- Install Go and its dependencies.
-- Clone the Printer Server repository.
-- Set up Redis.
-- Compile and run the Go-based server.
-
----
+- Install Nginx and create certificates for the domains
+- Ff you want to install Printer Server, script will also install FRP, Go, Redis and build Printer Server
+   - Othersiwe, you have to option to install FRP
+- Create, enable and run services
 
 ### **Server Information**
 
 1. **Server Code**:
-   - Located at: `~/projects/printer-server/main.go`.
+   - Located at: `~/printer-server`.
 
 2. **User Management Module**:
-   - Located at: `~/projects/printer-server/config/usermanager.go`.
-
-3. **How to Build and Run the Server**:
-   - Build the server binary:
-     ```bash
-     cd ~/projects/printer-server
-     go build -o printer_server main.go
-     ```
-   - Run the server:
-     ```bash
-     ./printer_server
-     ```
+   - Located at: `~/printer-server/user-manager`.
 
 4. **How to Build and Run the User Management Module**:
-   - Build the user manager binary:
+   - Run user manager:
      ```bash
-     cd ~/projects/printer-server/config
-     go build -o usermanager usermanager.go
-     ```
-   - Run the user manager:
-     ```bash
+     cd ~/printer-server
      ./usermanager <command>
      ```
 
