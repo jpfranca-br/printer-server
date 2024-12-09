@@ -174,7 +174,11 @@ fi
 # Update and install dependencies
 echo "Updating system and installing prerequisites..."
 sudo apt-get update -y && sudo apt-get install -y apt-utils ufw certbot python3-certbot-nginx wget tar redis
-check_status "Failed to install prerequisites."
+check_status "Failed to install common prerequisites."
+if install_printer_server; then
+    sudo apt-get install -y redis
+    check_status "Failed to install printer server prerequisites."
+fi
 
 ##########################################################################################
 ### NGINX AND CERTIFICATES
@@ -245,32 +249,33 @@ sudo systemctl reload nginx
 ##########################################################################################
 ### FRP
 ##########################################################################################
-
-# Download FRP
-echo "Downloading FRP $FRP_VERSION..."
-wget -q "$FRP_DOWNLOAD_URL" -O "/tmp/$FRP_TAR"
-
-# Ensure the FRP target directory exists
-if [ ! -d "$FRP_DIR" ]; then
-  echo "Creating directory $FRP_DIR..."
-  mkdir -p "$FRP_DIR"
-fi
-
-# Extract FRP
-echo "Extracting FRP to $FRP_DIR..."
-sudo tar --strip-components=1 -C "$FRP_DIR" -xzf "/tmp/$FRP_TAR"
-
-# Create/rewrite ~/frp/frps.toml
-sudo cat > $FRP_DIR/frps.toml <<EOL
+# FRP will be installed separately of as part of printer server environment
+if $install_frp || $install_printer_server; then
+    # Download FRP
+    echo "Downloading FRP $FRP_VERSION..."
+    wget -q "$FRP_DOWNLOAD_URL" -O "/tmp/$FRP_TAR"
+    
+    # Ensure the FRP target directory exists
+    if [ ! -d "$FRP_DIR" ]; then
+      echo "Creating directory $FRP_DIR..."
+      mkdir -p "$FRP_DIR"
+    fi
+    
+    # Extract FRP
+    echo "Extracting FRP to $FRP_DIR..."
+    sudo tar --strip-components=1 -C "$FRP_DIR" -xzf "/tmp/$FRP_TAR"
+    
+    # Create/rewrite ~/frp/frps.toml
+    sudo cat > $FRP_DIR/frps.toml <<EOL
 # frps.toml
 bindPort = 7000
 vhostHTTPPort = 8080
 auth.method = "token"
 auth.token = "$frp_token"
 EOL
-
-# Create/rewrite ~/frp/frpc.toml
-sudo cat > $FRP_DIR/frpc.toml <<EOL
+    
+    # Create/rewrite ~/frp/frpc.toml
+    sudo cat > $FRP_DIR/frpc.toml <<EOL
 # frpc.toml
 user = "$username"
 loginFailExit = false
@@ -288,9 +293,9 @@ localIP = "$printer_local_ip"
 localPort = 9100
 remotePort = 9100
 EOL
-
-# Create/rewrite /etc/systemd/system/frps.service
-sudo bash -c "cat > /etc/systemd/system/frps.service" <<EOL
+    
+    # Create/rewrite /etc/systemd/system/frps.service
+    sudo bash -c "cat > /etc/systemd/system/frps.service" <<EOL
 [Unit]
 Description=FRP Server
 After=network.target
@@ -305,74 +310,80 @@ WorkingDirectory=$FRP_DIR
 [Install]
 WantedBy=multi-user.target
 EOL
+    # CleanUP
+    echo "Cleaning up temporary files..."
+    [ -f /tmp/$FRP_TAR ] && rm /tmp/$FRP_TAR
+fi
 
 ##########################################################################################
 ### GO
 ##########################################################################################
 
-# Download Go
-echo "Downloading Go $GO_VERSION..."
-wget -q $GO_DOWNLOAD_URL -O /tmp/$GO_TAR
-
-# Install Go
-echo "Installing Go..."
-sudo tar -C /usr/local -xzf /tmp/$GO_TAR
-
-# Add Go to PATH Permanently
-echo "Adding Go to PATH..."
-if ! grep -q "$GO_INSTALL_DIR/bin" "$SHELL_CONFIG"; then
-    echo "export PATH=\$PATH:$GO_INSTALL_DIR/bin" >> "$SHELL_CONFIG"
+if $install_printer_server; then
+    # Download Go
+    echo "Downloading Go $GO_VERSION..."
+    wget -q $GO_DOWNLOAD_URL -O /tmp/$GO_TAR
+    
+    # Install Go
+    echo "Installing Go..."
+    sudo tar -C /usr/local -xzf /tmp/$GO_TAR
+    
+    # Add Go to PATH Permanently
+    echo "Adding Go to PATH..."
+    if ! grep -q "$GO_INSTALL_DIR/bin" "$SHELL_CONFIG"; then
+        echo "export PATH=\$PATH:$GO_INSTALL_DIR/bin" >> "$SHELL_CONFIG"
+    fi
+    
+    # Apply PATH changes for the current session
+    export PATH=$PATH:$GO_INSTALL_DIR/bin
+    
+    # Verify Go Installation
+    echo "Verifying Go installation..."
+    go version &> /dev/null
+    check_status "Go installation failed. Please check the script and try again."
+    echo "Go installed successfully: $(go version)"
+    
+    # Create Project Directory
+    echo "Setting up project directory..."
+    mkdir -p "$SRC_DIR"
+    # CleanUP
+    echo "Cleaning up temporary files..."
+    [ -f /tmp/$GO_TAR ] && rm /tmp/$GO_TAR
 fi
-
-# Apply PATH changes for the current session
-export PATH=$PATH:$GO_INSTALL_DIR/bin
-
-# Verify Go Installation
-echo "Verifying Go installation..."
-go version &> /dev/null
-check_status "Go installation failed. Please check the script and try again."
-echo "Go installed successfully: $(go version)"
-
-# Create Project Directory
-echo "Setting up project directory..."
-mkdir -p "$SRC_DIR"
 
 ##########################################################################################
 ### PRINTER-SERVER
 ##########################################################################################
 
-# Clone Source Code
-################echo "Cloning source code..."
-################rm -rf "$SRC_DIR" && git clone $PRINTER_SERVER_DOWNLOAD_URL "$SRC_DIR"
-#check_status "Failed to clone printer-server repository."
-
-# Initialize Go Module
-echo "Initializing Go module..."
-cd "$SRC_DIR"
-if [ ! -f go.mod ]; then
-    go mod init printer-server
-    check_status "Failed to initialize Go module."
-else
-    echo "Go module already initialized."
-fi
-
-# Install Go Dependencies
-echo "Installing Go dependencies..."
-go mod tidy
-check_status "Failed to install Go dependencies."
-
-# Build printer-server
-cd "$SRC_DIR"
-go build -o printer-server main.go
-check_status "Failed to build printer-server. Please check manually: go build -o printer-server main.go"
-
-# Build user-manager
-cd "$SRC_DIR"
-go build -o user-manager user-manager.go
-check_status "Failed to build user-manager. Please check manually: go build -o user-manager user-manager.go"
-
-# Create/rewrite /etc/systemd/system/printer-server.service
-sudo bash -c "cat > /etc/systemd/system/printer-server.service" <<EOL
+if $install_printer_server; then
+    # Clone Source Code
+    # Initialize Go Module
+    echo "Initializing Go module..."
+    cd "$SRC_DIR"
+    if [ ! -f go.mod ]; then
+        go mod init printer-server
+        check_status "Failed to initialize Go module."
+    else
+        echo "Go module already initialized."
+    fi
+    
+    # Install Go Dependencies
+    echo "Installing Go dependencies..."
+    go mod tidy
+    check_status "Failed to install Go dependencies."
+    
+    # Build printer-server
+    cd "$SRC_DIR"
+    go build -o printer-server main.go
+    check_status "Failed to build printer-server. Please check manually: go build -o printer-server main.go"
+    
+    # Build user-manager
+    cd "$SRC_DIR"
+    go build -o user-manager user-manager.go
+    check_status "Failed to build user-manager. Please check manually: go build -o user-manager user-manager.go"
+    
+    # Create/rewrite /etc/systemd/system/printer-server.service
+    sudo bash -c "cat > /etc/systemd/system/printer-server.service" <<EOL
 [Unit]
 Description=printer Server
 After=network.target
@@ -387,7 +398,8 @@ WorkingDirectory=$SRC_DIR
 [Install]
 WantedBy=multi-user.target
 EOL
-check_status "Failed to create/rewrite /etc/systemd/system/printer-server.service"
+    check_status "Failed to create/rewrite /etc/systemd/system/printer-server.service"
+fi
 
 ##########################################################################################
 ### ENABLING SERVICES
@@ -397,26 +409,30 @@ check_status "Failed to create/rewrite /etc/systemd/system/printer-server.servic
 echo "Reloading daemon..."
 sudo systemctl daemon-reload
 
-# Start and enable frps
-echo "Starting frps..."
-sudo systemctl start frps
-check_status "Failed to start frps. Please check manually."
-sudo systemctl enable frps
-check_status "Failed to enable frps at startup."
+if $install_frp || $install_printer_server; then
+    # Start and enable frps
+    echo "Starting frps..."
+    sudo systemctl start frps
+    check_status "Failed to start frps. Please check manually."
+    sudo systemctl enable frps
+    check_status "Failed to enable frps at startup."
+fi
 
-# Start and enable Redis
-echo "Starting Redis..."
-sudo systemctl start redis-server
-check_status "Failed to start Redis. Please check manually."
-sudo systemctl enable redis-server
-check_status "Failed to enable Redis at startup."
-
-# Start and enable printer-server
-echo "Starting printer-server..."
-sudo systemctl start printer-server
-check_status "Failed to start printer-server. Please check manually."
-sudo systemctl enable printer-server
-check_status "Failed to enable printer-server at startup."
+if $install_printer_server; then
+    # Start and enable Redis
+    echo "Starting Redis..."
+    sudo systemctl start redis-server
+    check_status "Failed to start Redis. Please check manually."
+    sudo systemctl enable redis-server
+    check_status "Failed to enable Redis at startup."
+    
+    # Start and enable printer-server
+    echo "Starting printer-server..."
+    sudo systemctl start printer-server
+    check_status "Failed to start printer-server. Please check manually."
+    sudo systemctl enable printer-server
+    check_status "Failed to enable printer-server at startup."
+fi
 
 ##########################################################################################
 ### UFW
@@ -428,14 +444,6 @@ sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
 sudo ufw allow 7000/tcp
 echo "y" | sudo ufw enable
-
-##########################################################################################
-### CLEANUP
-##########################################################################################
-
-echo "Cleaning up temporary files..."
-[ -f /tmp/$GO_TAR ] && rm /tmp/$GO_TAR
-[ -f /tmp/$FRP_TAR ] && rm /tmp/$FRP_TAR
 
 ##########################################################################################
 ### FINISH
