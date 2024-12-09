@@ -171,6 +171,8 @@ fi
 ### INSTALL DEPENDENCIES
 ##########################################################################################
 
+cd $HOME
+
 # Update and install dependencies
 echo "Updating system and installing prerequisites..."
 sudo apt-get update -y && sudo apt-get install -y apt-utils ufw certbot python3-certbot-nginx wget tar redis
