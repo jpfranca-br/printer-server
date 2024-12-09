@@ -6,7 +6,12 @@ import (
         "golang.org/x/crypto/bcrypt"
         "io/ioutil"
         "os"
+        "github.com/go-redis/redis/v8"
 )
+
+var redisClient = redis.NewClient(&redis.Options{
+    Addr: "localhost:6379", // Adjust as needed
+})
 
 type User struct {
         Username string `json:"username"`
@@ -85,6 +90,29 @@ func addUser(username, password string) {
 }
 
 func deleteUser(username string) {
+    for i, user := range users {
+        if user.Username == username {
+            // Remove the user from the list
+            users = append(users[:i], users[i+1:]...)
+            saveUsers()
+            fmt.Println("User deleted")
+
+            // Remove the token associated with the user from Redis
+            ctx := context.Background()
+            err := redisClient.Del(ctx, username).Err()
+            if err != nil {
+                fmt.Printf("Error removing token for user %s from Redis: %v\n", username, err)
+            } else {
+                fmt.Printf("Token for user %s removed from Redis.\n", username)
+            }
+
+            return
+        }
+    }
+    fmt.Println("User not found")
+}
+
+func deleteUserOLD(username string) {
         for i, user := range users {
                 if user.Username == username {
                         users = append(users[:i], users[i+1:]...)
