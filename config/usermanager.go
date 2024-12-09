@@ -6,28 +6,67 @@ import (
         "golang.org/x/crypto/bcrypt"
         "io/ioutil"
         "os"
+        "path/filepath"
+        "strings"
 )
 
 type User struct {
-        Username string json:"username"
-        Password string json:"password" // This will store the hashed password
+        Username string `json:"username"`
+        Password string `json:"password"` // This will store the hashed password
 }
 
 var users []User
-var filePath = "users.json" // Update the path if necessary
+var filePath = getFilePath() // Dynamically determine the absolute path to users.json
+
+// Dynamically determine the absolute path to the configuration file
+func getFilePath() string {
+        exePath, err := os.Executable()
+        if err != nil {
+                panic("Failed to determine executable path: " + err.Error())
+        }
+
+        // Check if running via `go run`
+        if strings.HasPrefix(exePath, "/tmp/go-build") {
+                return filepath.Join("users.json")
+        }
+
+        // Otherwise, resolve relative to the executable's location
+        configPath := filepath.Join(filepath.Dir(exePath), "../config/users.json")
+        return configPath
+}
 
 func loadUsers() {
+        // Debug: Print the resolved filePath
+        fmt.Printf("Debug: Loading users from file: %s\n", filePath)
+
         data, err := ioutil.ReadFile(filePath)
         if err != nil {
+                if os.IsNotExist(err) {
+                        fmt.Printf("Debug: File %s does not exist. Creating a new file.\n", filePath)
+                        users = []User{} // Initialize an empty user list
+                        saveUsers()      // Save the empty user list to create the file
+                        return
+                }
+
+                // Handle other types of errors
+                fmt.Printf("Debug: Could not read file %s. Error: %v\n", filePath, err)
                 users = []User{}
                 return
         }
+
+        // Unmarshal data into the users slice
         json.Unmarshal(data, &users)
 }
 
 func saveUsers() {
+        // Debug: Print the filePath before saving
+        fmt.Printf("Debug: Saving users to file: %s\n", filePath)
+
         data, _ := json.MarshalIndent(users, "", "  ")
-        ioutil.WriteFile(filePath, data, 0644)
+        err := ioutil.WriteFile(filePath, data, 0644)
+        if err != nil {
+                fmt.Printf("Debug: Failed to save users to file %s. Error: %v\n", filePath, err)
+        }
 }
 
 func hashPassword(password string) (string, error) {
@@ -84,6 +123,9 @@ func listUsers() {
 }
 
 func main() {
+        // Debug: Print the resolved filePath
+        fmt.Printf("Debug: Using configuration file at: %s\n", filePath)
+
         loadUsers()
 
         if len(os.Args) < 2 {
