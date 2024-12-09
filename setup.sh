@@ -402,8 +402,8 @@ sudo systemctl daemon-reload
 if $install_frp; then
     # Start and enable frps
     echo "Starting frps..."
-    sudo systemctl start frps
-    check_status "Failed to start frps. Please check manually."
+    sudo systemctl restart frps
+    check_status "Failed to (re)start frps. Please check manually."
     sudo systemctl enable frps
     check_status "Failed to enable frps at startup."
 fi
@@ -411,15 +411,15 @@ fi
 if $install_printer_server; then
     # Start and enable Redis
     echo "Starting Redis..."
-    sudo systemctl start redis-server
-    check_status "Failed to start Redis. Please check manually."
+    sudo systemctl restart redis-server
+    check_status "Failed to (re)start Redis. Please check manually."
     sudo systemctl enable redis-server
     check_status "Failed to enable Redis at startup."
     
     # Start and enable printer-server
     echo "Starting printer-server..."
-    sudo systemctl start printer-server
-    check_status "Failed to start printer-server. Please check manually."
+    sudo systemctl restart printer-server
+    check_status "Failed to (re)start printer-server. Please check manually."
     sudo systemctl enable printer-server
     check_status "Failed to enable printer-server at startup."
 fi
