@@ -55,7 +55,7 @@ done
 read -p "Enter the domain that will be used to access the printer: " printer_domain
 
 # Prompt user for the printer local port
-read -p "Enter the printer local port: " printer_local_ip
+read -p "Enter the printer local IP: " printer_local_ip
 
 # Prompt user for the FRP token
 read -p "Enter the FRP token: " frp_token
