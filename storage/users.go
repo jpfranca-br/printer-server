@@ -7,7 +7,7 @@ import (
 	"log"
 )
 
-var filePath = "config/users.json" // Adjust the path if necessary
+var filePath = "users.json" // Adjust the path if necessary
 
 type User struct {
 	Username string `json:"username"`
