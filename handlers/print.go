@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"printer_server/storage"
+	"printer-server/storage"
 )
 
 type PrintRequest struct {

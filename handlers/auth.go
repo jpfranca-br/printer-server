@@ -3,7 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	"printer_server/storage" // Ensure the correct import path
+	"printer-server/storage" // Ensure the correct import path
 	"time"
 )
 
