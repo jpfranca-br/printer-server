@@ -40,26 +40,78 @@ check_status() {
 ##########################################################################################
 
 # Prompt user for email
-read -p "Enter your email address (for Certbot notifications): " user_email
+while true; do
+    read -p "Enter your email address (for Certbot notifications): " user_email
+    # Check if input matches a basic email pattern
+    if [[ $user_email =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+        echo "Valid email: $user_email"
+        break
+    else
+        echo "Invalid email address. Please try again."
+    fi
+done
 
 # Prompt user for domains
-read -p "Enter the number of domains: " n
+while true; do
+    read -p "Enter the number of domains: " n
+    # Check if input is an integer using a regular expression
+    if [[ $n =~ ^[0-9]+$ ]]; then
+        break
+    else
+        echo "Invalid input. Please enter a positive integer."
+    fi
+done
+
 domains=()
 for ((i=1; i<=n; i++)); do
-    read -p "Enter domain $i: " domain
-    domains+=("$domain")
+    while true; do
+        read -p "Enter domain $i: " domain
+        # Check if input matches a basic domain pattern
+        if [[ $domain =~ ^(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})$ ]]; then
+            domains+=("$domain")
+            break
+        else
+            echo "Invalid domain. Please try again (e.g., example.com or sub.example.com)."
+        fi
+    done
 done
+
+# Print entered domains for verification
+echo "Entered domains: ${domains[@]}"
 
 # Prompt user for the domain that will be used for the printer
 # This will be the printer server for the client
-read -p "Enter the domain that will be used to access the printer: " printer_domain
+while true; do
+    read -p "Enter the domain that will be used to access the printer: " printer_domain
+    # Check if input matches a basic domain pattern
+    if [[ $printer_domain =~ ^(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})$ ]]; then
+        echo "Valid domain: $printer_domain"
+        break
+    else
+        echo "Invalid domain. Please try again (e.g., example.com or sub.example.com)."
+    fi
+done
 
 # Prompt user for the printer local port
-read -p "Enter the printer local IP: " printer_local_ip
+while true; do
+    read -p "Enter the printer local IP (x.x.x.x) or servername: " printer_local_ip
+    # Check if input matches a valid IP address or server name
+    if [[ $printer_local_ip =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ || $printer_local_ip =~ ^(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})$ ]]; then
+        echo "Valid input: $printer_local_ip"
+        break
+    else
+        echo "Invalid input. Please enter a valid IP address (e.g., 192.168.1.1) or server name (e.g., printer.local)."
+    fi
+done
 
-# Prompt user for the FRP token
-read -p "Enter the FRP token: " frp_token
-check_status "Failed to read FRP token."
+# Generate a GUID token using uuidgen
+if command -v uuidgen >/dev/null 2>&1; then
+    frp_token=$(uuidgen)
+else
+    # Fallback: Generate a random string using openssl if uuidgen is not available
+    frp_token=$(openssl rand -hex 16)
+fi
+echo "Generated FRP token: $frp_token"
 
 ##########################################################################################
 ### INSTALL DEPENDENCIES
@@ -67,7 +119,7 @@ check_status "Failed to read FRP token."
 
 # Update and install dependencies
 echo "Updating system and installing prerequisites..."
-sudo apt-get update -y && sudo apt-get install -y apt-utils ufw certbot python3-certbot-nginx wget tar redis git
+sudo apt-get update -y && sudo apt-get install -y apt-utils ufw certbot python3-certbot-nginx wget tar redis
 check_status "Failed to install prerequisites."
 
 ##########################################################################################
