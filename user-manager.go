@@ -14,7 +14,7 @@ type User struct {
 }
 
 var users []User
-var filePath = "config.json"
+var filePath = "users.json"
 
 func loadUsers() {
         // Debug: Print the resolved filePath
