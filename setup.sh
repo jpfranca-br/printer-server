@@ -61,7 +61,7 @@ else
     install_printer_server=false
 fi
 
-if ! install_printer_server; then
+if ! $install_printer_server; then
     # Ask if the user wants to install FRP
     if ask_yes_no "Do you want to install Fast Reverse Proxy"; then
         install_frp=true
