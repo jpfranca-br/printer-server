@@ -17,62 +17,89 @@ type PrintRequest struct {
 	Message  string `json:"message"`
 }
 
-func PrintHandler(w http.ResponseWriter, r *http.Request) {
-    var req PrintRequest
-    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-        http.Error(w, "Invalid request", http.StatusBadRequest)
-        return
-    }
+var (
+	printerAddress    = "localhost:9100"
+	realTimeStatusCmd = []byte{0x10, 0x04, 0x01} // Real-time status command
+)
 
-    // Validate the token
-    if !storage.ValidateToken(req.Username, req.Token) {
-        http.Error(w, "Unauthorized", http.StatusUnauthorized)
-        return
-    }
+func checkPrinterStatus(conn net.Conn) (bool, error) {
+	// Send Real-Time Status Command
+	_, err := conn.Write(realTimeStatusCmd)
+	if err != nil {
+		return false, fmt.Errorf("failed to send status command: %v", err)
+	}
 
-    // Decode the message if it is Base64
-    message, err := base64.StdEncoding.DecodeString(req.Message)
-    if err != nil {
-        message = []byte(req.Message) // Assume plain text if decoding fails
-    }
+	// Read Printer Response
+	buffer := make([]byte, 1024)
+	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	n, err := conn.Read(buffer)
+	if err != nil {
+		return false, fmt.Errorf("failed to read response: %v", err)
+	}
 
-    // Append newline or form feed to force buffer flush
-    flushCommand := "\n" // Change to "\x0c" for a form feed if needed
-    message = append(message, []byte(flushCommand)...)
+	response := buffer[:n]
+	if len(response) > 0 && (response[0] == 0x16 || response[0] == 0x12) {
+		return true, nil
+	}
 
-    // Debug: Print the message to the console
-    fmt.Printf("Debug: Sending message to localhost:9100: %s\n", string(message))
-
-    // Send the message to localhost:9100 with retry logic
-    retryIntervals := []time.Duration{2 * time.Second, 4 * time.Second, 8 * time.Second, 16 * time.Second, 32 * time.Second}
-    for _, interval := range retryIntervals {
-        conn, err := net.Dial("tcp", "localhost:9100")
-        if err != nil {
-            fmt.Printf("Debug: Failed to connect to localhost:9100, retrying in %v...\n", interval)
-            time.Sleep(interval)
-            continue
-        }
-        defer conn.Close()
-
-        // Debug: Confirm the connection is open
-        fmt.Println("Debug: Connection to localhost:9100 established")
-
-        // Write the message to the connection
-        _, writeErr := conn.Write(message)
-        if writeErr != nil {
-            fmt.Printf("Debug: Failed to write message to localhost:9100: %v\n", writeErr)
-            time.Sleep(interval)
-            continue
-        }
-
-        // Success: Message sent
-        fmt.Println("Debug: Message sent successfully to localhost:9100")
-        w.Header().Set("Content-Type", "application/json")
-        w.WriteHeader(http.StatusOK)
-        w.Write([]byte(`{"message": "Message sent successfully"}`))
-        return
-    }
-
-    // If all retries fail
-    http.Error(w, "Failed to send message after retries", http.StatusInternalServerError)
+	return false, nil
 }
+
+func PrintHandler(w http.ResponseWriter, r *http.Request) {
+	var req PrintRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	// Validate the token
+	if !storage.ValidateToken(req.Username, req.Token) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Decode the message if it is Base64
+	message, err := base64.StdEncoding.DecodeString(req.Message)
+	if err != nil {
+		message = []byte(req.Message) // Assume plain text if decoding fails
+	}
+
+	// Append newline or form feed to force buffer flush
+	flushCommand := "\n"
+	message = append(message, []byte(flushCommand)...)
+
+	// Connect to the printer
+	conn, err := net.Dial("tcp", printerAddress)
+	if err != nil {
+		http.Error(w, "Printer Offline or No Paper", http.StatusServiceUnavailable)
+		return
+	}
+	defer conn.Close()
+
+	// Check printer status before printing
+	ready, err := checkPrinterStatus(conn)
+	if err != nil || !ready {
+		http.Error(w, "Printer Offline or No Paper", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Send the print message
+	_, err = conn.Write(message)
+	if err != nil {
+		http.Error(w, "Failed to send message to printer", http.StatusInternalServerError)
+		return
+	}
+
+	// Check printer status after printing
+	ready, err = checkPrinterStatus(conn)
+	if err != nil || !ready {
+		http.Error(w, "Possible Problem During Printing", http.StatusInternalServerError)
+		return
+	}
+
+	// Success
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"message": "Printed OK"}`))
+}
+
